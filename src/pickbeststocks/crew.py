@@ -1,10 +1,11 @@
 from crewai import Agent, Crew, Process, Task
 from crewai.project import CrewBase, agent, crew, task
 from crewai_tools import SerperDevTool
+from numpy.matlib import long
 from pydantic import BaseModel, Field
 from typing import List
 from .tools.push_tool import PushNotificationTool
-
+from crewai.memory import Memory
 
 
 class TrendingCompany(BaseModel): 
@@ -86,12 +87,46 @@ class PickbestStocks():
             config=self.agents_config['manager'],
             allow_delegation=True
         )
-            
+
+        short_term_memory = Memory(
+            embedder={
+                "provider": "openai",
+                "config": {"model": "text-embedding-3-small"},
+                "dimensions": 1536
+            },
+            storage="lancedb",
+            type="short_term",
+            path="./memory/"
+        )
+
+        long_term_memory = Memory(
+            embedder={
+                "provider": "openai",
+                "config": {"model": "text-embedding-3-large"},
+                "dimensions": 1536
+            },
+            storage="lancedb",
+            type="long_term",
+            path="./memory/"
+        )
+
+        entity_memory = Memory(
+            embedder={
+                "provider": "openai",
+                "config": {"model": "text-embedding-3-large"},
+                "dimensions": 1536
+            },
+            storage="lancedb",
+            type="entity",
+            path="./memory/"
+        )
+
         return Crew(
             agents=self.agents,
             tasks=self.tasks,
             process=Process.hierarchical,
             verbose=True,
             manager_agent=manager,
-            memory=True,
+            memory=[short_term_memory, long_term_memory, entity_memory]
         )
+        
